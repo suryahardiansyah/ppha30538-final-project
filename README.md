@@ -43,7 +43,7 @@ Using datasets from the Chicago Data Portal, we examine spatial and temporal dis
 3. Run the Shiny app:
    ```bash
    cd shiny-app
-   python app.py
+   shiny run --reload app.py
 
 ## Reproducibility
 - All data processing and analysis steps are documented in the final-project.qmd file. By knitting this file, users can regenerate all results and plots.
