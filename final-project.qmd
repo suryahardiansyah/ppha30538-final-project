@@ -51,8 +51,8 @@ neighborhood_file = os.path.join(data_dir, "chicago_neighborhoods.geojson")
 processed_file = os.path.join(data_dir, "processed_carjackings.csv")
 ```
 
-
-# Step 1: Download all carjacking data using pagination
+# Data Wrangling
+## Step 1: Download all carjacking data using pagination
 ```{python}
 limit = 1000  # Maximum rows per request announced in the webpage
 offset = 0  # Start at the beginning
@@ -88,7 +88,7 @@ else:
 ```
 
 
-# Step 2: Download neighborhood boundaries
+## Step 2: Download neighborhood boundaries
 ```{python}
 response = requests.get(neighborhood_url)
 if response.status_code == 200:
@@ -99,7 +99,7 @@ else:
     print(f"Failed to download neighborhood boundaries. Status code: {response.status_code}")
 ```
 
-# Step 3: Load datasets
+## Step 3: Load datasets
 ```{python}
 carjackings = pd.read_csv(carjacking_file)
 neighborhoods = gpd.read_file(neighborhood_file)
@@ -109,7 +109,7 @@ if "date" in carjackings.columns:
     carjackings["date"] = pd.to_datetime(carjackings["date"], errors="coerce")
 ```
 
-# Step 4: Spatial join to associate carjackings with neighborhoods
+## Step 4: Spatial join to associate carjackings with neighborhoods
 ```{python}
 # Convert carjacking data to GeoDataFrame
 if "latitude" in carjackings.columns and "longitude" in carjackings.columns:
@@ -123,7 +123,7 @@ if "latitude" in carjackings.columns and "longitude" in carjackings.columns:
 carjackings_with_neighborhoods = gpd.sjoin(carjackings, neighborhoods, how="left", predicate="intersects")
 ```
 
-# Step 5: Add new columns
+## Step 5: Add new columns
 ```{python}
 if "date" in carjackings_with_neighborhoods.columns:
     carjackings_with_neighborhoods["month"] = carjackings_with_neighborhoods["date"].dt.month
@@ -133,8 +133,90 @@ if "date" in carjackings_with_neighborhoods.columns:
     )
 ```
 
-# Step 6: Save raw and processed datasets
+## Step 6: Save raw and processed datasets
 ```{python}
 carjackings_with_neighborhoods.to_csv(processed_file, index=False)
 print(f"Processed carjackings data saved to {processed_file}")
+```
+
+# Static Plot 1: Choropleth Map of Carjacking Incidents by Neighborhood
+## Step 1: Load data
+```{python}
+carjacking_file = "data/processed_carjackings.csv"
+neighborhood_file = "data/chicago_neighborhoods.geojson"
+
+carjackings = pd.read_csv(carjacking_file)
+neighborhoods = gpd.read_file(neighborhood_file)
+```
+
+## Step 2: Aggregate carjacking incidents by neighborhood
+```{python}
+carjacking_counts = carjackings.groupby("pri_neigh").size().reset_index(name="count")
+```
+
+## Step 3: Merge counts with neighborhood boundaries
+```{python}
+neighborhoods = neighborhoods.merge(carjacking_counts, left_on="pri_neigh", right_on="pri_neigh", how="left")
+neighborhoods["count"] = neighborhoods["count"].fillna(0)
+```
+
+## Step 4: Prepare GeoJSON for Altair
+```{python}
+geojson_data = json.loads(neighborhoods.to_json())
+```
+
+## Step 5: Create Choropleth Map
+```{python}
+choropleth = alt.Chart(alt.Data(values=geojson_data["features"])).mark_geoshape().encode(
+    color=alt.Color("properties.count:Q", title="Carjacking Count"),
+    tooltip=["properties.neighborhood:N", "properties.count:Q"]
+).properties(
+    title="Choropleth Map of Carjacking Incidents by Neighborhood",
+    width=600,
+    height=400
+).project(
+    type="equirectangular"
+)
+```
+
+## Step 6: Save to PNG
+```{python}
+pictures_dir = os.path.join(os.getcwd(), "pictures")
+os.makedirs(pictures_dir, exist_ok=True)
+choropleth.save(os.path.join(pictures_dir, "choropleth_map.png"))
+
+print("Choropleth map saved to pictures/choropleth_map.png")
+```
+
+# Static Plot 2: Line Chart Showing Carjacking Trends Over Time
+## Step 1: Extract month and year
+```{python}
+carjackings["date"] = pd.to_datetime(carjackings["date"], errors="coerce")
+carjackings["year_month"] = carjackings["date"].dt.to_period("M")
+```
+
+## Step 2: Aggregate counts by time
+```{python}
+time_trends = carjackings.groupby("year_month").size().reset_index(name="count")
+time_trends["year_month"] = time_trends["year_month"].astype(str)
+```
+
+## Step 3: Create Line Chart
+```{python}
+line_chart = alt.Chart(time_trends).mark_line(point=True).encode(
+    x=alt.X("year_month:T", title="Time (Year-Month)"),
+    y=alt.Y("count:Q", title="Number of Carjackings"),
+    tooltip=["year_month:T", "count:Q"]
+).properties(
+    title="Carjacking Trends Over Time",
+    width=800,
+    height=400
+)
+```
+
+## Step 4: Save to PNG
+```{python}
+line_chart.save(os.path.join(pictures_dir, "line_chart.png"))
+
+print("Line chart saved to pictures/line_chart.png")
 ```
