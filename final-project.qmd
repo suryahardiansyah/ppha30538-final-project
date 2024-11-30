@@ -17,3 +17,124 @@ include-before-body:
       breaklines
     }
 ---
+
+```{python} 
+#| echo: false
+
+# Import required packages.
+import pandas as pd
+import altair as alt 
+import pandas as pd
+from datetime import date
+import numpy as np
+alt.data_transformers.disable_max_rows() 
+alt.renderers.enable("png")
+import json
+import requests
+import os
+import geopandas as gpd
+from datetime import datetime
+```
+
+```{python}
+# Create the data directory
+data_dir = os.path.join(os.getcwd(), "data")
+os.makedirs(data_dir, exist_ok=True)
+
+# API endpoints
+carjacking_url = "https://data.cityofchicago.org/resource/t66u-yzsn.json"
+neighborhood_url = "https://data.cityofchicago.org/api/geospatial/bbvz-uum9?method=export&format=GeoJSON"
+
+# File paths
+carjacking_file = os.path.join(data_dir, "chicago_carjackings.csv")
+neighborhood_file = os.path.join(data_dir, "chicago_neighborhoods.geojson")
+processed_file = os.path.join(data_dir, "processed_carjackings.csv")
+```
+
+
+# Step 1: Download all carjacking data using pagination
+```{python}
+limit = 1000  # Maximum rows per request announced in the webpage
+offset = 0  # Start at the beginning
+all_data = []  # List to store all rows
+
+while True:
+    # Add pagination parameters to the API request
+    params = {"$limit": limit, "$offset": offset}
+    response = requests.get(carjacking_url, params=params)
+
+    if response.status_code != 200:
+        print(f"Failed to fetch carjacking data. Status code: {response.status_code}")
+        break
+
+    # Parse the JSON response
+    chunk = response.json()
+
+    # Stop the loop if no more data is returned
+    if not chunk:
+        break
+
+    all_data.extend(chunk)  # Append the fetched rows
+    offset += limit  # Increment the offset for the next request
+    print(f"Fetched {len(chunk)} rows. Total rows so far: {len(all_data)}")
+
+# Convert the collected data to a DataFrame
+if all_data:
+    carjacking_data = pd.DataFrame(all_data)
+    carjacking_data.to_csv(carjacking_file, index=False)
+    print(f"All carjacking data saved to {carjacking_file}")
+else:
+    print("No data was downloaded.")
+```
+
+
+# Step 2: Download neighborhood boundaries
+```{python}
+response = requests.get(neighborhood_url)
+if response.status_code == 200:
+    with open(neighborhood_file, "wb") as f:
+        f.write(response.content)
+    print(f"Neighborhood boundaries saved to {neighborhood_file}")
+else:
+    print(f"Failed to download neighborhood boundaries. Status code: {response.status_code}")
+```
+
+# Step 3: Load datasets
+```{python}
+carjackings = pd.read_csv(carjacking_file)
+neighborhoods = gpd.read_file(neighborhood_file)
+
+# Ensure carjackings have proper datetime parsing
+if "date" in carjackings.columns:
+    carjackings["date"] = pd.to_datetime(carjackings["date"], errors="coerce")
+```
+
+# Step 4: Spatial join to associate carjackings with neighborhoods
+```{python}
+# Convert carjacking data to GeoDataFrame
+if "latitude" in carjackings.columns and "longitude" in carjackings.columns:
+    carjackings = gpd.GeoDataFrame(
+        carjackings,
+        geometry=gpd.points_from_xy(carjackings.longitude, carjackings.latitude),
+        crs=neighborhoods.crs
+    )
+
+# Perform spatial join
+carjackings_with_neighborhoods = gpd.sjoin(carjackings, neighborhoods, how="left", predicate="intersects")
+```
+
+# Step 5: Add new columns
+```{python}
+if "date" in carjackings_with_neighborhoods.columns:
+    carjackings_with_neighborhoods["month"] = carjackings_with_neighborhoods["date"].dt.month
+    carjackings_with_neighborhoods["year"] = carjackings_with_neighborhoods["date"].dt.year
+    carjackings_with_neighborhoods["time_of_day"] = carjackings_with_neighborhoods["date"].dt.hour.apply(
+        lambda x: "Morning" if 6 <= x < 12 else "Afternoon" if 12 <= x < 18 else "Evening"
+    )
+```
+
+# Step 6: Save raw and processed datasets
+```{python}
+carjackings_with_neighborhoods.to_csv(processed_file, index=False)
+print(f"Processed carjackings data saved to {processed_file}")
+```
