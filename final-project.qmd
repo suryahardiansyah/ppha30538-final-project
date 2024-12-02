@@ -133,6 +133,15 @@ if "date" in carjackings_with_neighborhoods.columns:
     )
 ```
 
+## Step 5.1: Add binned latitude and longitude
+```{python}
+# Round latitude and longitude to 2 decimal places
+carjackings_with_neighborhoods["binned_latitude"] = carjackings_with_neighborhoods["latitude"].round(2)
+carjackings_with_neighborhoods["binned_longitude"] = carjackings_with_neighborhoods["longitude"].round(2)
+print("Binned latitude and longitude columns added.")
+```
+
+
 ## Step 6: Save raw and processed datasets
 ```{python}
 carjackings_with_neighborhoods.to_csv(processed_file, index=False)

@@ -1,4 +1,6 @@
 faicons
 shiny
-seaborn
+shinywidgets
 pandas
+geopandas
+altair
