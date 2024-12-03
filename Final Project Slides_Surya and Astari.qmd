@@ -1,0 +1,99 @@
+---
+title: "Carjacking Analysis in Chicago: Visualizing Trends for Policy Implications"
+author: "PPHA 30538 Final Project Group 28 - Surya Hardiansyah and Astari Raihanah"
+date: today
+date-format: long
+format: 
+    beamer:
+        aspectratio: 169
+        theme: Madrid
+        toc: false
+        header-includes: 
+            \setbeamertemplate{footline}[frame number]
+            \usepackage{fvextra}
+            \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+            \DefineVerbatimEnvironment{OutputCode}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+# Introduction
+
+## Background
+- Carjacking is a pressing urban issue, with significant impacts on public safety, insurance policies, and law enforcement resource allocation.
+- According to [WTTW News](https://news.wttw.com/2023/08/21/carjackings-rise-illinois-looks-curb-growing-crime) in 2023, Chicago is reporting more incidents than any other city in the United States.
+- Carjacking incidents in Chicago vary widely across neighborhoods and time. 
+
+## Research Questions
+- How do temporal and spatial patterns of carjacking incidents in Chicago inform actionable policy and insurance solutions?
+
+# Methods in Data Analysis (1)
+
+## Data Sources
+* Chicago Data Portal: Carjacking Incidents (2001-2024) and Chicago Community Area Boundaries (GeoJSON)
+
+## Key Data Attributes:
+* Incident date, time, and coordinates
+* Neighborhood area boundaries
+
+## Data Preparation:
+1. API-based data retrieval
+2. Spatial Joins and aggregations by year, month, and time of day
+
+# Methods in Data Analysis (2)
+
+## Visualization and Shiny Dashboard
+* Static choropleth maps and line charts to explore trends.
+* Shiny app for dynamic filtering by neighborhood and date range.
+
+## NLP Analysis
+* Collected text data on Chicago auto insurance, carjacking, and insurance policy using web scraping and APIs and Applied NLP for sentiment analysis: Subjectivity and Polarity
+
+## Challenges faced:
+1. **API Limitations**: The Chicago Data Portal limits API downloads to 1,000 rows per request, hence we used pagination to retrieve all 22,192 records.
+2. **Data gaps**: Missing or incomplete records, such as missing coordinates, required exclusion (144 data rows per November 30th, 2024).
+
+# Spatial Patterns
+![Choropleth Map of Carjackings](pictures/choropleth_map.png){width=40% fig-cap="Carjacking incidents by neighborhood in Chicago, 2001-2024." align=center}
+
+## Analysis
+* Hotspot Neighborhoods: **Austin, West and East Garfield Park, Englewood**.
+* Hotspots align with areas facing economic challenges and limited community infrastructure
+* Suggests localized interventions for those areas
+
+# Temporal Trends
+![Carjacking Trends Over Time](pictures/line_chart.png){width=50% align=center}
+
+## What might explain the 2020-2021 spike? 
+* Pandemic disruptions
+* Economic uncertainty
+* Police resource reallocation during social unrest
+
+# Shiny Interactive Dashboard
+* Dynamic choropleth map for spatial analysis with date and neighborhood filters
+* Dynamic line charts for time series analysis with date and neighborhood filters
+* Empowers policymakers and stakeholders to explore patterns interactively
+
+# NLP Analysis: Polarity and Subjectivity
+![Average Polarity and Subjectivity by Query](pictures/polarity_subjectivity.png){width=90% align=center}
+
+# Policy Implications
+## Targeted Interventions for Hotspots:
+* Increased patrols and community safety programs.
+* Infrastructure improvements (lighting, cameras).
+
+## Temporal Resource Allocation:
+* Deploy resources strategically during crime spikes.
+* Prepare for surges in external crises.
+
+## Fairer Insurance Policies:
+* Risk-based pricing.
+* Incentives for safety measures.
+* Collaboration between insurers and law enforcement.
+
+# Conclusions
+
+## Key Takeaways:
+* Combining spatial, temporal, and sentiment analysis provides a holistic view of carjacking trends and public perceptions
+
+## Future Directions:
+1. Integrate additional datasets (e.g. traffic patterns, socioeconomic factors)
+2. Enhancing the dashboard’s interactivity and performance by optimizing data structures will improve user experience and scalability.
