@@ -7,10 +7,7 @@ __pycache__/
 
 .ipynb_checkpoints/
 
-data/raw/
-*.csv
 *.json
-*.geojson
 
 shiny-app/__pycache__/
 shiny-app/*.log
@@ -24,4 +21,5 @@ Thumbs.db
 !requirements.txt
 !final-project.qmd
 !pictures/
-!data/processed/
+
+*.tex

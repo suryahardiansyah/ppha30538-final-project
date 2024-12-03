@@ -83,21 +83,53 @@ def server(input, output, session):
     @render_altair
     def carjacking_map():
         filtered_data = filtered_df()
-        counts = filtered_data.groupby("pri_neigh").size().reset_index(name="count")
 
-        for feature in chicago_geojson["features"]:
-            pri_neigh = feature["properties"]["pri_neigh"]
-            feature["properties"]["count"] = counts.set_index("pri_neigh")["count"].get(pri_neigh, 0)
+        if input.neighborhood() == "All":
+            # Default: Choropleth map
+            counts = filtered_data.groupby("pri_neigh").size().reset_index(name="count")
 
-        map_chart = alt.Chart(alt.Data(values=chicago_geojson["features"])).mark_geoshape().encode(
-            color=alt.Color("properties.count:Q", title="Carjackings"),
-            tooltip=["properties.pri_neigh:N", "properties.count:Q"],
-        ).project(type="equirectangular").properties(
-            title="Carjacking Incidents by Neighborhood",
-            width=600,
-            height=400,
-        )
+            for feature in chicago_geojson["features"]:
+                pri_neigh = feature["properties"]["pri_neigh"]
+                feature["properties"]["count"] = counts.set_index("pri_neigh")["count"].get(pri_neigh, 0)
+
+            map_chart = alt.Chart(alt.Data(values=chicago_geojson["features"])).mark_geoshape().encode(
+                color=alt.Color("properties.count:Q", title="Carjackings"),
+                tooltip=["properties.pri_neigh:N", "properties.count:Q"],
+            ).project(type="equirectangular").properties(
+                title="Carjacking Incidents by Neighborhood",
+                width=600,
+                height=400,
+            )
+        else:
+            # Filtered: Points within the selected neighborhood
+            binned_counts = (
+                filtered_data.groupby(["binned_latitude", "binned_longitude"])
+                .size()
+                .reset_index(name="count")
+            )
+
+            neighborhood_boundary = neighborhoods[neighborhoods["pri_neigh"] == input.neighborhood()]
+            boundary_chart = alt.Chart(neighborhood_boundary).mark_geoshape(
+                fillOpacity=0,  # Transparent fill
+                stroke="gray",  # Gray border color
+                strokeWidth=1.5  # Thickness of the border
+            ).encode(
+            ).project(type="equirectangular").properties(
+                width=600,
+                height=400,
+            )
+
+            point_chart = alt.Chart(binned_counts).mark_circle().encode(
+                longitude="binned_longitude:Q",
+                latitude="binned_latitude:Q",
+                size=alt.Size("count:Q", title="Number of Reports", scale=alt.Scale(range=[10, 100])),
+                tooltip=["binned_latitude:Q", "binned_longitude:Q", "count:Q"],
+            )
+
+            map_chart = boundary_chart + point_chart
+
         return map_chart
+
 
     @render_altair
     def carjacking_trend():
