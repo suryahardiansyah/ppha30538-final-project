@@ -103,7 +103,7 @@ def server(input, output, session):
         else:
             # Filtered: Points within the selected neighborhood
             binned_counts = (
-                filtered_data.groupby(["binned_latitude", "binned_longitude"])
+                filtered_data.groupby(["binned_latitude", "binned_longitude", "pri_neigh"])
                 .size()
                 .reset_index(name="count")
             )
@@ -123,7 +123,7 @@ def server(input, output, session):
                 longitude="binned_longitude:Q",
                 latitude="binned_latitude:Q",
                 size=alt.Size("count:Q", title="Number of Reports", scale=alt.Scale(range=[10, 100])),
-                tooltip=["binned_latitude:Q", "binned_longitude:Q", "count:Q"],
+                tooltip=["pri_neigh:N", "binned_latitude:Q", "binned_longitude:Q", "count:Q"],
             )
 
             map_chart = boundary_chart + point_chart
