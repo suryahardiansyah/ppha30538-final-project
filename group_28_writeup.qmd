@@ -1,6 +1,6 @@
 ---
 title: "Carjacking Analysis in Chicago: Visualizing Trends for Policy Implications"
-author: "Group 28 - Surya Hardiansyah and Astari Raihanah" 
+author: "PPHA 30538 Final Project Group 28 - Surya Hardiansyah and Astari Raihanah" 
 date: "today"
 format: 
     pdf:
@@ -18,28 +18,168 @@ execute:
 # Group 28 Members:
 * Astari Raihanah (CNetID: astari) - GitHub username: astari1007
 * Surya Hardiansyah (CNetID: sur) - GitHub username: suryahardiansyah
-
-Both of us are coming from Section 2 of Professor Ganong's lecture (Monday and Wednesday, 10:30-11:50 AM).
+* Both members are from Section 2 of Professor Ganong's lecture (Monday and Wednesday, 10:30-11:50 AM).
 
 # Research Question
-This project examines the temporal and spatial patterns of carjacking incidents across Chicago neighborhoods from 2001 until 2024. The primary goal is to identify carjacking hotspots and temporal trends to provide actionable insights for policymakers and insurance companies aiming to design fair and efficient insurance policies and targeted crime prevention strategies.
+This project examines the temporal and spatial patterns of carjacking incidents across Chicago neighborhoods from 2001 to 2024. The goal is to identify carjacking hotspots and trends, offering actionable insights for policymakers and insurance companies to design fair and effective crime prevention strategies.
 
 # Approach
-## Data and Tools
+## Data Sources
 We utilized datasets from the [Chicago Data Portal](https://data.cityofchicago.org), including:
 
-1. **Carjacking Data**: Provides details of carjacking incidents, including date, time, and coordinates from 2001 to 2024.
-2. **Neighborhood Boundaries**: Geospatial data to associate carjackings with specific neighborhoods.  
-Our analysis includes data wrangling, static visualizations using **Altair**, and dynamic exploration via **Shiny Dashboard** in Python.
+1. **Carjacking Data**: Provides details of carjacking incidents, including date, time, and location coordinates (2001-2024)
+2. **Neighborhood Boundaries**: Geospatial data (GeoJSON) to associate carjackings with specific neighborhoods.  
 
-## Data Wrangling
+## Data Preparation and Analysis
 ### Key Steps
-1. **Data Acquisition**: Carjacking reports retrieved from the Chicago Data Portal using API pagination stored locally as a CSV file. Neighborhood Boundaries is downlaoded as a GeoJSON file via a single API request and stored locally.
+1. **Data Retrieval**: Carjacking reports retrieved from the Chicago Data Portal using API pagination stored locally as a CSV file. Neighborhood Boundaries is downlaoded as a GeoJSON file via a single API request and stored locally.
 2. **Data Preparation**: The already structured datasets required no cleaning, and spatial join merged carjacking incidents with neighborhood boundaries using coordinate variables.
 3. **Data Aggregation**: Dataset is grouped by Year, Month and Time of Day (Morning, Afternoon, and Evening) for temporal trend analysis.
 4. **Visualization**: By static choropleth map and static line chart, identifying patterns by neighborhood and trend over time.
 5. **Interactive Dashboard**: Using Shiny to built dynamic filtering of data by neighborhood and date range by choropleth map.
-6. **Storage and Reproducibility**: All raw and processed data files are stored in a local 'data' directory. Documentation ensures reproducibility of the analysis and visualizations.
+6. **NLP Sentiment Analysis**: Text data on carjacking, auto insurance, and policies were collected using SerpAPI to scrape news articles and blog posts with queries like "Chicago car insurance policy", "auto insurance Chicago", "carjacking auto insurance Chicago", and "auto insurance Chicago car theft." The data was analyzed using spaCy and TextBlob to extract sentiment scores, including polarity (positivity/negativity) and subjectivity (degree of bias or opinion).
+7. **Storage and Reproducibility**: All raw and processed data files are stored in a local 'data' directory. Documentation ensures reproducibility of the analysis and visualizations.
+
+```{python} 
+#| echo: false
+
+# Import required packages.
+import pandas as pd
+import altair as alt 
+import pandas as pd
+from datetime import date
+import numpy as np
+alt.data_transformers.disable_max_rows() 
+alt.renderers.enable("png")
+import json
+import requests
+import os
+import geopandas as gpd
+from datetime import datetime
+
+import requests
+from spacytextblob.spacytextblob import SpacyTextBlob
+import spacy
+import time  # To apply sleep betweeb request
+```
+
+```{python}
+#| echo: false
+
+# Create the data directory
+data_dir = os.path.join(os.getcwd(), "data")
+os.makedirs(data_dir, exist_ok=True)
+
+# API endpoints
+carjacking_url = "https://data.cityofchicago.org/resource/t66u-yzsn.json"
+# neighborhood_url = "https://data.cityofchicago.org/api/geospatial/bbvz-uum9?method=export&format=GeoJSON" # The website stopped providing the geoJSON as per December 5th, 2024. However, we've secured the file beforehand.
+
+# File paths
+carjacking_file = os.path.join(data_dir, "chicago_carjackings.csv")
+neighborhood_file = os.path.join(data_dir, "chicago_neighborhoods.geojson")
+processed_file = os.path.join(data_dir, "processed_carjackings.csv")
+```
+
+```{python}
+#| echo: false
+
+limit = 1000  # Maximum rows per request announced in the webpage
+offset = 0  # Start at the beginning
+all_data = []  # List to store all rows
+
+while True:
+    # Add pagination parameters to the API request
+    params = {"$limit": limit, "$offset": offset}
+    response = requests.get(carjacking_url, params=params)
+
+    if response.status_code != 200:
+        print(f"Failed to fetch carjacking data. Status code: {response.status_code}")
+        break
+
+    # Parse the JSON response
+    chunk = response.json()
+
+    # Stop the loop if no more data is returned
+    if not chunk:
+        break
+
+    all_data.extend(chunk)  # Append the fetched rows
+    offset += limit  # Increment the offset for the next request
+    print(f"Fetched {len(chunk)} rows. Total rows so far: {len(all_data)}")
+
+# Convert the collected data to a DataFrame
+if all_data:
+    carjacking_data = pd.DataFrame(all_data)
+    carjacking_data.to_csv(carjacking_file, index=False)
+    print(f"All carjacking data saved to {carjacking_file}")
+else:
+    print("No data was downloaded.")
+```
+
+```{python}
+#| echo: false
+
+response = requests.get(neighborhood_url)
+if response.status_code == 200:
+    with open(neighborhood_file, "wb") as f:
+        f.write(response.content)
+    print(f"Neighborhood boundaries saved to {neighborhood_file}")
+else:
+    print(f"Failed to download neighborhood boundaries. Status code: {response.status_code}")
+```
+
+```{python}
+#| echo: false
+
+carjackings = pd.read_csv(carjacking_file)
+neighborhoods = gpd.read_file(neighborhood_file)
+
+# Ensure carjackings have proper datetime parsing
+if "date" in carjackings.columns:
+    carjackings["date"] = pd.to_datetime(carjackings["date"], errors="coerce")
+```
+
+```{python}
+#| echo: false
+
+# Convert carjacking data to GeoDataFrame
+if "latitude" in carjackings.columns and "longitude" in carjackings.columns:
+    carjackings = gpd.GeoDataFrame(
+        carjackings,
+        geometry=gpd.points_from_xy(carjackings.longitude, carjackings.latitude),
+        crs=neighborhoods.crs
+    )
+
+# Perform spatial join
+carjackings_with_neighborhoods = gpd.sjoin(carjackings, neighborhoods, how="left", predicate="intersects")
+```
+
+```{python}
+#| echo: false
+
+if "date" in carjackings_with_neighborhoods.columns:
+    carjackings_with_neighborhoods["month"] = carjackings_with_neighborhoods["date"].dt.month
+    carjackings_with_neighborhoods["year"] = carjackings_with_neighborhoods["date"].dt.year
+    carjackings_with_neighborhoods["time_of_day"] = carjackings_with_neighborhoods["date"].dt.hour.apply(
+        lambda x: "Morning" if 6 <= x < 12 else "Afternoon" if 12 <= x < 18 else "Evening"
+    )
+```
+
+```{python}
+#| echo: false
+
+# Round latitude and longitude to 2 decimal places
+carjackings_with_neighborhoods["binned_latitude"] = carjackings_with_neighborhoods["latitude"].round(2)
+carjackings_with_neighborhoods["binned_longitude"] = carjackings_with_neighborhoods["longitude"].round(2)
+print("Binned latitude and longitude columns added.")
+```
+
+```{python}
+#| echo: false
+
+carjackings_with_neighborhoods.to_csv(processed_file, index=False)
+print(f"Processed carjackings data saved to {processed_file}")
+```
 
 ### Challenges
 1. **API Limitations**: The Chicago Data Portal limits API downloads to 1,000 rows per request, hence we used pagination to retrieve all 22,192 records.
@@ -49,22 +189,271 @@ Our analysis includes data wrangling, static visualizations using **Altair**, an
 ## 1. Choropleth Map: Carjacking Incidents by Neighborhood
 This map visualizes carjacking incidents by neighborhood. Some neighborhoods such as Austin, West Garfield Park, East Garfield Park, Englewood, and West Englewood have higher carjacking counts. These neighborhoods should be prioritized for policy interventions, such as increased patrolling or community safety programs.
 
-![Choropleth Map of Carjackings](pictures/choropleth_map.png){width=50% fig-cap="Carjacking incidents by neighborhood in Chicago, 2001-2024." align=center}
+![Choropleth Map of Carjackings](pictures/choropleth_map.png){width=45% fig-cap="Carjacking incidents by neighborhood in Chicago, 2001-2024." align=center}
 
 ## 2. Line Chart: Carjacking Trends Over Time
 This chart highlights trends in carjacking incidents over time. A sharp increase is evident around 2020, peaking in 2021. This trend may reflect broader societal disruptions, such as those caused by the COVID-19 pandemic and economic turmoil. Policymakers could use this data to explore the impact of external events on crime rates.
 
-![Carjacking Trends Over Time](pictures/line_chart.png){width=50% align=center}
+![Carjacking Trends Over Time](pictures/line_chart.png){width=45% align=center}
+
+```{python}
+#| echo: false
+
+carjacking_file = "data/processed_carjackings.csv"
+neighborhood_file = "data/chicago_neighborhoods.geojson"
+
+carjackings = pd.read_csv(carjacking_file)
+neighborhoods = gpd.read_file(neighborhood_file)
+```
+
+```{python}
+#| echo: false
+
+carjacking_counts = carjackings.groupby("pri_neigh").size().reset_index(name="count")
+```
+
+```{python}
+#| echo: false
+
+neighborhoods = neighborhoods.merge(carjacking_counts, left_on="pri_neigh", right_on="pri_neigh", how="left")
+neighborhoods["count"] = neighborhoods["count"].fillna(0)
+```
+
+```{python}
+#| echo: false
+
+geojson_data = json.loads(neighborhoods.to_json())
+```
+
+```{python}
+#| echo: false
+
+choropleth = alt.Chart(alt.Data(values=geojson_data["features"])).mark_geoshape().encode(
+    color=alt.Color("properties.count:Q", title="Carjacking Count"),
+    tooltip=["properties.neighborhood:N", "properties.count:Q"]
+).properties(
+    title="Choropleth Map of Carjacking Incidents by Neighborhood",
+    width=600,
+    height=400
+).project(
+    type="equirectangular"
+)
+```
+
+```{python}
+#| echo: false
+
+pictures_dir = os.path.join(os.getcwd(), "pictures")
+os.makedirs(pictures_dir, exist_ok=True)
+choropleth.save(os.path.join(pictures_dir, "choropleth_map.png"))
+
+print("Choropleth map saved to pictures/choropleth_map.png")
+```
+
+```{python}
+#| echo: false
+
+carjackings["date"] = pd.to_datetime(carjackings["date"], errors="coerce")
+carjackings["year_month"] = carjackings["date"].dt.to_period("M")
+```
+
+```{python}
+#| echo: false
+
+time_trends = carjackings.groupby("year_month").size().reset_index(name="count")
+time_trends["year_month"] = time_trends["year_month"].astype(str)
+```
+
+```{python}
+#| echo: false
+
+line_chart = alt.Chart(time_trends).mark_line(point=True).encode(
+    x=alt.X("year_month:T", title="Time (Year-Month)"),
+    y=alt.Y("count:Q", title="Number of Carjackings"),
+    tooltip=["year_month:T", "count:Q"]
+).properties(
+    title="Carjacking Trends Over Time",
+    width=800,
+    height=400
+)
+```
+
+```{python}
+#| echo: false
+
+line_chart.save(os.path.join(pictures_dir, "line_chart.png"))
+
+print("Line chart saved to pictures/line_chart.png")
+```
+
+## 3. NLP Analysis
+Collected text data on Chicago auto insurance, carjacking, and insurance policy using web scraping and APIs and Applied NLP for sentiment analysis: Subjectivity and Polarity. The sentiment analysis of auto insurance-related text data shows a predominantly neutral-to-negative sentiment regarding carjacking impacts on premiums.
+
+```{python}
+#| echo: false
+# Load spaCy with TextBlob for Sentiment Analysis
+nlp = spacy.load("en_core_web_sm")
+nlp.add_pipe("spacytextblob")
+
+# Function to fetch paginated results from SerpAPI
+def fetch_serpapi_results(query, api_key, num_results=100, start=0):
+    url = "https://serpapi.com/search"
+    params = {
+        "q": query,
+        "hl": "en",  # Language: English
+        "gl": "us",  # Country: US
+        "api_key": api_key,
+        "num": num_results,  # Max number of results per page
+        "start": start,  # Offset for pagination
+    }
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return response.json().get("organic_results", [])
+    else:
+        print(f"Error: {response.status_code}, Message: {response.text}")
+        return []
+
+# Function to analyze sentiment
+def analyze_sentiment(text):
+    doc = nlp(text)
+    return doc._.blob.polarity, doc._.blob.subjectivity
+
+# SerpAPI key and expanded queries
+api_key = "a294a642b519834b1905e86841770361e944c1b48eb3c597bc2f958893f31a4b"
+queries = [
+    "Chicago car insurance policy",
+    "auto insurance Chicago",
+    "carjacking auto insurance Chicago",
+    "auto insurance Chicago car theft"
+]
+
+# Collect results
+data = []
+for query in queries:
+    total_observations = 0
+    start = 0  # Start pagination from 0
+    while total_observations < 500:  # Target total of 500 results
+        results = fetch_serpapi_results(query, api_key, num_results=100, start=start)
+        if not results:
+            break  # Stop if no more results
+        for result in results:
+            title = result.get("title", "")
+            link = result.get("link", "")
+            snippet = result.get("snippet", "")
+            date = result.get("date", "")  # Published date if available
+            if snippet:  # Ensure snippet exists
+                polarity, subjectivity = analyze_sentiment(snippet)
+                data.append({
+                    "query": query,
+                    "title": title,
+                    "link": link,
+                    "date_published": date,
+                    "snippet": snippet,
+                    "polarity": polarity,
+                    "subjectivity": subjectivity
+                })
+        total_observations += len(results)
+        start += 100  # Move to the next page
+        time.sleep(2)  # Avoid hitting rate limits
+
+# Create DataFrame
+df = pd.DataFrame(data)
+
+# Save results to CSV
+df.to_csv("serpapi_expanded_results.csv", index=False)
+
+print(f"Total results collected: {len(df)}")
+
+```
+
+```{python}
+#| echo: false
+
+# Load the data from the CSV file into a Pandas DataFrame
+data = pd.read_csv("serpapi_expanded_results.csv")
+
+# Ensure Altair can render without row limits
+alt.data_transformers.disable_max_rows()
+
+# Average Polarity by Query 
+avg_polarity_chart = (
+    alt.Chart(data)
+    .mark_bar(color="steelblue")
+    .encode(
+        x=alt.X("query:N", title="Query", sort="-y"),
+        y=alt.Y("mean(polarity):Q", title="Average Polarity"),
+        tooltip=["query", "mean(polarity):Q"]
+    )
+    .properties(title="Average Sentiment Polarity by Query", width=600, height=400)
+)
+
+# Add text labels for the bars
+text = avg_polarity_chart.mark_text(
+    align='center',
+    baseline='middle',
+    dy=-10  # Adjust position of the text above the bars
+).encode(
+    text=alt.Text("mean(polarity):Q", format=".2f")
+)
+
+# Combine bar chart with text labels
+avg_polarity_with_labels = avg_polarity_chart + text
+
+# Average Subjectivity by Query
+avg_subjectivity_chart = (
+    alt.Chart(data)
+    .mark_bar(color="orange") 
+    .encode(
+        x=alt.X("query:N", title="Query", sort="-y"),
+        y=alt.Y("mean(subjectivity):Q", title="Average Subjectivity"),
+        tooltip=["query", "mean(subjectivity):Q"]
+    )
+    .properties(title="Average Subjectivity by Query", width=600, height=400)
+)
+
+# Add text labels for the bars
+text_subjectivity = avg_subjectivity_chart.mark_text(
+    align='center',
+    baseline='middle',
+    dy=-10  # Adjust position of the text above the bars
+).encode(
+    text=alt.Text("mean(subjectivity):Q", format=".2f")
+)
+
+# Combine bar chart with text labels
+avg_subjectivity_with_labels = avg_subjectivity_chart + text_subjectivity
+
+# Display the charts
+avg_polarity_with_labels | avg_subjectivity_with_labels
+
+```
+
+# NLP Analysis: Polarity and Subjectivity
+![Average Polarity and Subjectivity by Query](pictures/polarity_subjectivity.png){width=40% align=center}
+
+Findings from sentiment analysis charts reveal that “auto insurance Chicago” is discussed more positively compared to terms directly related to carjacking, reflecting a gap in addressing public concerns about the impact of crime on insurance.
 
 # Shiny Dashboard
-The **Interactive Carjacking Dashboard** enables users to:
+```{python}
+#| echo: false
+import subprocess
 
+# Start the Shiny app in the background
+command = ["shiny", "run", "shiny-app/app.py", "--port", "8501"]
+process = subprocess.Popen(command)
+
+# Inform the user
+print("Shiny app is running at http://localhost:8501")
+```
+The **Interactive Carjacking Dashboard** enables users to:
 1. Explore carjacking patterns dynamically using a **Choropleth Map** filtered by neighborhood and date range. 
-2. Visualize temporal patterns through a **Line Chart** with customizable filters for precise analysis.
+2. Visualize temporal patterns through a **Line Chart** with customizable filters based on neighborhoods and time for precise analysis.
+
+Click [here](http://localhost:8501) to open the Shiny app in the browser.
 
 # Strengths
 * **Dynamic Exploration**: Offers flexibility to investigate specific neighborhoods or time periods. 
-* **Policy Relevance**: Combines spatial and temporal data for actionable insights.
+* **Policy Relevance**: Combines spatial and temporal data along with sentiment analysis for actionable insights.
 
 # Weaknesses
 * **Performance**: Processing large datasets slows responsiveness
@@ -72,12 +461,12 @@ The **Interactive Carjacking Dashboard** enables users to:
 
 # Policy Implications
 ## 1. Neighborhood Hotspots: Targeted Interventions
-Neighborhoods like Austin, West Garfield Park, East Garfield Park, Englewood, and West Englewood are carjacking hotspots, requiring focused interventions. 
+Neighborhoods like Austin, West Garfield Park, East Garfield Park, Englewood, and West Englewood are carjacking hotspots, requiring focused interventions.
 
-* **Policy Actions**: Increase police patrols during high-risk hours, implement community safety programs like neighborhood watch and workshops, improve infrastructure like installing street lighting and surveillance cameras, and invest in socioeconomic support like job training and education.
+* **Policy Actions**: Increase police patrols during high-risk hours, implement community safety programs like neighborhood watch and workshops, improve infrastructure like installing street lighting and surveillance cameras, and invest in socioeconomic support and community engagement like job training and education.
 
 ## 2. Temporal Patterns: Addressing Crime Spikes
-The sharp increase in carjackings during 2020-2021 and patterns in seasons and times of day highlight actionable trends. 
+The sharp increase in carjackings during 2020-2021 and patterns in seasons and times of day highlight actionable trends. This trend may be attributed to disruptions caused by the COVID-19 pandemic, economic uncertainty, and resource reallocation during social unrest. Incidents are higher in the evening and winter months
 
 * **Policy Actions**: Allocate law enforcement resources during high-crime months and times, and prepare for crime surges during external crises such as pandemics or economic crises. 
 
@@ -86,10 +475,8 @@ Car insurance often unfairly penalizes residents of high-crime areas. Policies s
 
 * **Policy Actions**: Use risk-based pricing focused on individual factors, incentivize safety measures such as giving discounts for anti-theft devices, require transparency in how crime stats influence premiums, and collaborate with law enforcement to lower risks and premiums.
 
-* **Broader Considerations**: Adress poverty and unemployment in high-crime neighborhoods, collaborate with residents to foster trust and safety, and regularly assess the effectiveness of interventions using updated data. 
-
 # Future Directions
-Future work should focus on integrating additional datasets, such as police reports and traffic patterns, to provide deeper insights into carjacking trends and their underlying causes. Enhancing the dashboard’s interactivity and performance by optimizing data structures will improve user experience and scalability. Additionally, evaluating the impact of crime prevention measures through comparative analysis of pre- and post-intervention data will help assess policy effectiveness and inform future strategies.
+Future work aims to integrate additional datasets, such as socioeconomic indicators, traffic patterns, and law enforcement reports, to provide deeper insights into the factors influencing carjacking trends. Enhancements to the dashboard will focus on improving interactivity and scalability, enabling broader accessibility and more dynamic exploration of spatial and temporal crime patterns.
 
-## Acknowledgement
-This project was completed for PPHA 30538 under the guidance of Professors Peter Ganong and Maggie Shi.
+# Conclusion
+Combining spatial, temporal, and sentiment analysis provides a comprehensive understanding of carjacking trends in Chicago. By addressing hotspots, temporal patterns, and public sentiment, this project offers valuable insights for crime prevention and insurance reform.
