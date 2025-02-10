@@ -59,7 +59,9 @@ queries = [
     "Chicago car insurance policy",
     "auto insurance Chicago",
     "carjacking auto insurance Chicago",
-    "auto insurance Chicago car theft"
+    "auto insurance Chicago car theft",
+    "Chicago carjacking",
+    "Chicago car theft"
 ]
 
 # Collect results
@@ -95,7 +97,7 @@ for query in queries:
 df = pd.DataFrame(data)
 
 # Save results to CSV
-df.to_csv("serpapi_expanded_results.csv", index=False)
+df.to_csv("serpapi_expanded_results_2.csv", index=False)
 
 print(f"Total results collected: {len(df)}")
 
@@ -107,7 +109,7 @@ import pandas as pd
 import altair as alt
 
 # Load the data from the CSV file into a Pandas DataFrame
-data = pd.read_csv("serpapi_expanded_results.csv")
+data = pd.read_csv("serpapi_expanded_results_2.csv")
 
 # Ensure Altair can render without row limits
 alt.data_transformers.disable_max_rows()
