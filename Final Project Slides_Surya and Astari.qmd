@@ -23,7 +23,7 @@ format:
 - Carjacking incidents in Chicago vary widely across neighborhoods and time, requiring data-driven interventions. 
 
 ## Research Questions
-- How do temporal and spatial patterns of carjacking incidents in Chicago inform actionable policy and insurance solutions?
+- How do temporal and spatial patterns of carjacking incidents in Chicago inform actionable policy and solutions?
 
 # Methods in Data Analysis (1)
 
@@ -48,17 +48,18 @@ format:
 1. **API Limitations**: The Chicago Data Portal limits API downloads to 1,000 rows per request, hence we used pagination to retrieve all 22,192 records.
 2. **Data gaps**: Missing or incomplete records, such as missing coordinates, were excluded from the analysis (144 data rows per November 30th, 2024).
 
-# Natural Language Processing (SerpAPI) Analysis and Limitations
+# Natural Language Processing Analysis and Limitations
 
 ## **SerpAPI Data Collection**
-* Applied Natural Language Processing (NLP) to analyze Polarity (Positive/Negative Sentiment) and Subjectivity (Degree of opinion/bias)
+* Applied Natural Language Processing (NLP) to analyze Polarity (Positive/Negative Sentiment) and Subjectivity (Degree of opinion/bias) with 1000 observations (2021-2024)
 * Data sources: Google search results, news websites, and public repositories.
 * Queries used: "Chicago car insurance policy", "auto insurance Chicago", "carjacking auto insurance Chicago", "auto insurance Chicago car theft", "Chicago carjacking", and "Chicago car theft"
 
 ## Limitations and Biases:
+* Most of the insurance keyword extracts from insurance company website.
 * Search results may prioritize recent high-profile cases, overlooking older or less-publicized incidents.
-* News coverage bias: Overrepresentation of specific neighborhoods based on media priorities.
-* Temporal gaps: If news sources focus more on recent events, historical trends might be incomplete.
+* Overrepresentation of specific neighborhoods based on media priorities.
+* The news sources focus more on recent events, historical trends might be incomplete.
 
 # Spatial Patterns
 ![Choropleth Map of Carjackings](pictures/choropleth_map.png){width=40% fig-cap="Carjacking incidents by neighborhood in Chicago, 2001-2024." align=center}
@@ -72,8 +73,8 @@ format:
 ![Carjacking Trends Over Time](pictures/line_chart.png){width=50% align=center}
 
 ## What might explain the 2020-2021 spike? 
-* **Pandemic disruptions** - reduces police presence, economic hardship.
-* **Economic uncertainty** - more individuals turning to crime.
+* **Pandemic disruptions** - reduced police presence in the neighborhood.
+* **Economic uncertainty** - promote more people into crime.
 * Police resource reallocation during social unrest.
 
 # Shiny Interactive Dashboard
@@ -89,25 +90,16 @@ format:
 * Crime-related discussions are neutral to slightly negative (e.g. "Chicago carjacking", and "Chicago car theft") - lower polarity and less subjective framing (more factual and data-driven rather than opinions).
 
 # Policy Implications: Data-Driven adjustments
-## Targeted Policing and Policy Framing
-* Increased police patrols and community safety programs.
-* Infrastructure improvements (lighting, surveillance cameras).
-* Deploy more law enforcement resources during historical crime surge periods.
-* Proactive crime mitigation during external shocks (e.g. economic crises)
-
-## Insurance Policies: Data-Driven Adjustments
-* Risk-based pricing aligned with high-risk neighborhoods.
-* Incentives for safety measures (e.g. discounts for security cameras, anti-theft devices).
-* Closer insurer-law enforcement collaboration for crime prevention strategies.
-
-## Crime Prevention Narratives
-* To combat carjacking, local governments can leverage sentiment analysis to design awareness campaigns that reshape public perception and mobilize community action.
+* Hotspot-based Policing: More patrols in Austin, West/East Garfield Park, and Englewood.
+* Infrastructure improvement: lighting, surveillance cameras, community safety programs.
+* Time-Based Resource Allocation: Deploy more law enforcement at night and during high-crime periods (e.g. 2020-2021 spikes).
+* Proactive crime mitigation during external shocks (e.g. economic crises).
+* Insurance premiums should be risk-adjusted based on carjacking incidence rates (e.g. higher premiums in high-risk areas like Austin and lower premiums in Hyde Park). 
 
 # Conclusions
 
 ## Key Takeaways:
 * Combining spatial, temporal, and sentiment analysis provides a holistic view of carjacking trends and public perceptions.
-* Policy and insurance strategies should be designed based on public sentiment, ensuring risk-based pricing and targeted safety measures. 
 
 ## Future Directions:
 1. Integrate additional datasets (e.g. traffic patterns, socioeconomic factors)
